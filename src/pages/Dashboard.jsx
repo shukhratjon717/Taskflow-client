@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import API from "../api/api";
 import { useNavigate } from "react-router-dom";
 
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+} from "@hello-pangea/dnd";
+
 export default function Dashboard() {
   const [boards, setBoards] = useState([]);
   const [title, setTitle] = useState("");
@@ -11,7 +17,7 @@ export default function Dashboard() {
     getBoards();
   }, []);
 
-  // 📥 GET BOARDS
+  // 📥 GET
   const getBoards = async () => {
     try {
       const res = await API.get("/boards");
@@ -46,8 +52,7 @@ export default function Dashboard() {
 
   // ✏️ UPDATE
   const updateBoard = async (id) => {
-    const newTitle = prompt("Yangi board nomi:");
-
+    const newTitle = prompt("Yangi nom kiriting:");
     if (!newTitle) return;
 
     try {
@@ -56,6 +61,18 @@ export default function Dashboard() {
     } catch (err) {
       console.log("UPDATE ERROR:", err);
     }
+  };
+
+  // 🔥 DRAG
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const items = Array.from(boards);
+    const [moved] = items.splice(result.source.index, 1);
+
+    items.splice(result.destination.index, 0, moved);
+
+    setBoards(items);
   };
 
   // 🚪 LOGOUT
@@ -68,7 +85,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-100 p-6">
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-800">
+          🚀 Task Dashboard
+        </h1>
 
         <button
           onClick={logout}
@@ -78,10 +97,10 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* CREATE BOARD */}
-      <div className="bg-white p-4 rounded-xl shadow mb-6 flex gap-2">
+      {/* CREATE */}
+      <div className="bg-white p-4 rounded-2xl shadow mb-6 flex gap-2">
         <input
-          className="flex-1 border p-2 rounded"
+          className="flex-1 border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
           placeholder="New board title..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -89,41 +108,87 @@ export default function Dashboard() {
 
         <button
           onClick={createBoard}
-          className="bg-blue-500 text-white px-4 rounded hover:bg-blue-600"
+          className="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600"
         >
           Add
         </button>
       </div>
 
-      {/* BOARDS LIST */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {boards.map((b) => (
-          <div
-            key={b._id}
-            className="bg-white p-4 rounded-xl shadow flex justify-between items-center"
-          >
-            <h2 className="text-lg font-semibold">{b.title}</h2>
+      {/* DRAG AREA */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="boards">
+          {(provided) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
+              {boards.map((b, index) => (
+                <Draggable
+                  key={b._id}
+                  draggableId={b._id}
+                  index={index}
+                >
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={`p-4 rounded-2xl flex items-center justify-between transition 
+                      ${
+                        snapshot.isDragging
+                          ? "bg-blue-50 shadow-2xl scale-105"
+                          : "bg-white shadow-md hover:shadow-xl"
+                      }`}
+                    >
+                      {/* LEFT */}
+                      <div className="flex items-center gap-3">
+                        {/* NUMBER */}
+                        <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full font-bold">
+                          {index + 1}
+                        </div>
 
-            <div className="flex gap-2">
-              {/* UPDATE */}
-              <button
-                onClick={() => updateBoard(b._id)}
-                className="bg-yellow-400 px-3 py-1 rounded hover:bg-yellow-500"
-              >
-                Edit
-              </button>
+                        {/* TITLE */}
+                        <h2 className="font-semibold text-gray-800">
+                          {b.title}
+                        </h2>
+                      </div>
 
-              {/* DELETE */}
-              <button
-                onClick={() => deleteBoard(b._id)}
-                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
+                      {/* RIGHT */}
+                      <div className="flex items-center gap-2">
+                        {/* DRAG ICON */}
+                        <span
+                          {...provided.dragHandleProps}
+                          className="cursor-grab text-gray-400 hover:text-gray-600"
+                        >
+                          ☰
+                        </span>
+
+                        {/* EDIT */}
+                        <button
+                          onClick={() => updateBoard(b._id)}
+                          className="bg-yellow-400 px-3 py-1 rounded-lg text-sm hover:bg-yellow-500"
+                        >
+                          Edit
+                        </button>
+
+                        {/* DELETE */}
+                        <button
+                          onClick={() => deleteBoard(b._id)}
+                          className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+
+              {provided.placeholder}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
   );
 }
